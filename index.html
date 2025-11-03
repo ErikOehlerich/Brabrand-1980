@@ -79,6 +79,19 @@
             updateWhenIdle: true
         });
 
+        // Nyt historisk lag fra mappen 1953-1976
+        var historiskKort1953 = L.tileLayer('./1953-1976/{z}/{x}/{y}.png', {
+            attribution: '© Erik Oehlerich',
+            minZoom: 11,
+            maxZoom: 17,
+            tileSize: 256,
+            opacity: 1.0,
+            bounds: [[55.9, 9.9], [56.4, 10.4]],
+            noWrap: true,
+            errorTileUrl: '',
+            updateWhenIdle: true
+        });
+
         // Definér base og overlay maps
         var baseMaps = {
             "OpenStreetMap": osm,
@@ -89,84 +102,72 @@
             "Mørkt tema": dark
         };
 
-        var overlayMaps = {
-            "Brabrand 1980-2001": historiskKort
-        };
-
-        // Tilføj koordinat visning
-        L.control.mousePosition({
-            position: 'bottomleft',
-            separator: ', ',
-            emptyString: 'Udenfor kortområde',
-            lngFirst: false,
-            numDigits: 6,
-            lngFormatter: function(num) {
-                return num.toFixed(6);
-            },
-            latFormatter: function(num) {
-                return num.toFixed(6);
-            }
-        }).addTo(map);
-
         // Opret koordinat-vælger gruppe
         var koordinatGruppe = L.layerGroup();
         
-        // Tilføj koordinat-vælger
+        // Marker og kontrol (ikke tilføjet til map før laget aktiveres)
         var marker = null;
         var koordinatInfo = L.control({position: 'topleft'});
         
         koordinatInfo.onAdd = function(map) {
             this._div = L.DomUtil.create('div', 'koordinat-info');
-            this._div.style.background = 'white';
+            // Minimal stil så boksen er lille og diskret
+            this._div.style.background = 'rgba(255,255,255,0.95)';
             this._div.style.padding = '6px 8px';
-            this._div.style.margin = '10px 0 0 0';
-            this._div.style.border = '2px solid rgba(0,0,0,0.2)';
+            this._div.style.margin = '10px';
+            this._div.style.border = '1px solid rgba(0,0,0,0.2)';
             this._div.style.borderRadius = '4px';
-            this._div.innerHTML = '<strong>Valgte koordinater</strong><br>Klik på kortet for at vælge punkt';
+            this._div.style.fontSize = '13px';
+            this._div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
+            this._div.innerHTML = '<strong>Valgte koordinater</strong><br><span style="font-size:12px;color:#333">Klik på kortet for at vælge</span>';
             return this._div;
         };
 
+        // Klik-handler: sæt markør, vis koordinater og kopier automatisk
         var clickHandler = function(e) {
             if (marker) {
                 koordinatGruppe.removeLayer(marker);
             }
             marker = L.marker(e.latlng);
             koordinatGruppe.addLayer(marker);
-            var coords = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
-            koordinatInfo._div.innerHTML = '<strong>Valgte koordinater</strong><br>' + 
-                                         '<div style="margin: 5px 0;">' +
-                                         'Lat: ' + e.latlng.lat.toFixed(6) + '<br>' +
-                                         'Lng: ' + e.latlng.lng.toFixed(6) + '</div>' +
-                                         '<button onclick="navigator.clipboard.writeText(\'' + coords + '\').then(() => { ' +
-                                         'this.innerHTML=\'Kopieret!\'; ' +
-                                         'setTimeout(() => { this.innerHTML=\'Kopier koordinater\'; }, 2000);' +
-                                         ' })" ' +
-                                         'style="padding: 4px 8px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px;">' +
-                                         'Kopier koordinater</button>';
-            
-            // Automatisk kopiering
-            navigator.clipboard.writeText(coords).then(() => {
+
+            var lat = e.latlng.lat.toFixed(6);
+            var lng = e.latlng.lng.toFixed(6);
+            var coords = lat + ', ' + lng;
+
+            // Opdater kontrolboksen
+            koordinatInfo._div.innerHTML = '<strong>Valgte koordinater</strong><br>' +
+                                           '<div style="margin-top:4px;">Lat: ' + lat + '<br>Lng: ' + lng + '</div>' +
+                                           '<div style="margin-top:6px;color:#2e7d32;font-weight:600;">Kopieret til udklipsholder</div>';
+
+            // Kopier til udklipsholder (kræver HTTPS eller localhost)
+            navigator.clipboard.writeText(coords).then(function() {
+                // Vis kort bekræftelse i konsol (valgfrit)
                 console.log('Koordinater kopieret: ' + coords);
+            }).catch(function(err){
+                console.warn('Kunne ikke kopiere koordinater:', err);
             });
+
+            // Gør beskeden midlertidig (tilbage til instruks efter 2s)
+            setTimeout(function() {
+                if (koordinatInfo._div) {
+                    koordinatInfo._div.innerHTML = '<strong>Valgte koordinater</strong><br><span style="font-size:12px;color:#333">Klik på kortet for at vælge</span>';
+                }
+            }, 2000);
         };
 
-        // Tilføj koordinat-gruppen til overlaymaps
-        var overlayMaps = {
-            "Brabrand 1980-2001": historiskKort,
-            "Koordinat vælger": koordinatGruppe
-        };
-
-        // Når koordinat-laget aktiveres/deaktiveres
+        // Håndter aktivering/deaktivering via layer-control
         map.on('overlayadd', function(e) {
-            if (e.name === "Koordinat vælger") {
+            if (e.layer === koordinatGruppe) {
+                // Vis kontrol og begynd lytte efter klik
                 koordinatInfo.addTo(map);
                 map.on('click', clickHandler);
             }
         });
-
         map.on('overlayremove', function(e) {
-            if (e.name === "Koordinat vælger") {
-                map.removeControl(koordinatInfo);
+            if (e.layer === koordinatGruppe) {
+                // Fjern kontrol og stop lytning; ryd markør
+                koordinatInfo.remove();
                 map.off('click', clickHandler);
                 if (marker) {
                     koordinatGruppe.removeLayer(marker);
@@ -174,6 +175,18 @@
                 }
             }
         });
+        
+        // Hvis brugeren vil have koordinatværktøjet aktivt ved load, kan man tilføje:
+        // koordinatGruppe.addTo(map);
+        // koordinatInfo.addTo(map);
+        // map.on('click', clickHandler);
+
+        // Opdateret overlay maps — begge historiske lag og koordinat-vælger
+        var overlayMaps = {
+            "Brabrand 1980-2001": historiskKort,
+            "Brabrand 1953-1976": historiskKort1953,
+            "Koordinat vælger": koordinatGruppe
+        };
 
         // Tilføj lag control med både base og overlay maps
         L.control.layers(baseMaps, overlayMaps).addTo(map);
