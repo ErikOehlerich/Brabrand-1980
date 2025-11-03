@@ -54,9 +54,9 @@
             maxZoom: 19
         });
 
-        // ESRI World Terrain
-        var terrain = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© ESRI',
+        // OpenStreetMap Humanitarian
+        var humanitarian = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors, Humanitarian OpenStreetMap Team',
             maxZoom: 19
         });
 
@@ -85,7 +85,7 @@
             "Satellit": satellite,
             "Topografisk": topo,
             "Vejkort": streets,
-            "Terræn": terrain,
+            "Humanitarian": humanitarian,
             "Mørkt tema": dark
         };
 
