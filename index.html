@@ -29,7 +29,8 @@
             maxBoundsViscosity: 0.3 // Blødere grænser
         });
 
-        // Base maps (OpenStreetMap og Satellit)
+        // Base maps
+        // OpenStreetMap Standard
         var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
@@ -38,6 +39,30 @@
         // ESRI Satellit kort
         var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© ESRI',
+            maxZoom: 19
+        });
+
+        // OpenTopoMap (topografisk kort)
+        var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenTopoMap',
+            maxZoom: 17
+        });
+
+        // ESRI World Street Map
+        var streets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© ESRI',
+            maxZoom: 19
+        });
+
+        // ESRI World Terrain
+        var terrain = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© ESRI',
+            maxZoom: 19
+        });
+
+        // CartoDB Dark Matter (mørkt tema)
+        var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB',
             maxZoom: 19
         });
 
@@ -57,7 +82,11 @@
         // Definér base og overlay maps
         var baseMaps = {
             "OpenStreetMap": osm,
-            "Satellit": satellite
+            "Satellit": satellite,
+            "Topografisk": topo,
+            "Vejkort": streets,
+            "Terræn": terrain,
+            "Mørkt tema": dark
         };
 
         var overlayMaps = {
@@ -152,6 +181,42 @@
         // Start med OSM som baggrund og historisk kort som overlay
         osm.addTo(map);
         historiskKort.addTo(map);
+
+        // Tilføj punkt for Gjellerupskolen/Sødalskolen
+        var skoleMarker = L.marker([56.149854, 10.137970]).addTo(map);
+        
+        // Opret popup indhold med billede og information
+        var popupContent = `
+            <div style="max-width: 300px;">
+                <h3 style="margin: 0 0 10px 0;">Gjellerupskolen/Sødalskolen</h3>
+                <img src="soedal.png" alt="Gjellerupskolen/Sødalskolen" style="width: 100%; margin-bottom: 10px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold;">Arkitekt:</td>
+                        <td style="padding: 4px 0;">Jens Hedegaard</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold;">Årstal:</td>
+                        <td style="padding: 4px 0;">1960</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold;">Type byggeri:</td>
+                        <td style="padding: 4px 0;">Skole</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold;">Adresse:</td>
+                        <td style="padding: 4px 0;">Louisevej 29, 8220 Brabrand</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold;">Koordinater:</td>
+                        <td style="padding: 4px 0;">56.151622, 10.118666</td>
+                    </tr>
+                </table>
+            </div>
+        `;
+
+        // Tilføj popup til markøren
+        skoleMarker.bindPopup(popupContent);
 
         // Tilføj søgefunktion
         var geocoder = L.Control.geocoder({
