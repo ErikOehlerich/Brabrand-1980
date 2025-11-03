@@ -3,23 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sanct Croix Map</title>
+    <title>Brabrand</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.css"/>
     <style>
         #map { height: 100vh; width: 100vw; }
+        .leaflet-control-geocoder {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
-        var map = L.map('map').setView([17.75, -64.75], 10); // Justér koordinaterne efter behov
+        var map = L.map('map', {
+            center: [56.158, 10.139],
+            zoom: 15,
+            maxBounds: [[55.9, 9.9], [56.4, 10.4]], // Meget løsere bounds
+            maxBoundsViscosity: 0.3 // Blødere grænser
+        });
 
-        L.tileLayer('https://erikoehlerich.github.io/Tiles-for-Aaby-Map//{z}/{x}/{y}.png', {
+        // Base maps (OpenStreetMap og Satellit)
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        });
+
+        // ESRI Satellit kort
+        var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© ESRI',
+            maxZoom: 19
+        });
+
+        // Historiske kort som overlay
+        var historiskKort = L.tileLayer('./{z}/{x}/{y}.png', {
             attribution: '© Erik Oehlerich',
-            maxZoom: 19,
-            tileSize: 256
+            minZoom: 11,
+            maxZoom: 17,
+            tileSize: 256,
+            opacity: 1.0,  // Fuld synlighed
+            bounds: [[55.9, 9.9], [56.4, 10.4]], // Meget større område omkring Brabrand
+            noWrap: true,
+            errorTileUrl: '', // Skjul fejl-tiles
+            updateWhenIdle: true
+        });
+
+        // Definér base og overlay maps
+        var baseMaps = {
+            "OpenStreetMap": osm,
+            "Satellit": satellite
+        };
+
+        var overlayMaps = {
+            "Historisk kort overlay": historiskKort
+        };
+
+        // Tilføj koordinat visning
+        L.control.mousePosition({
+            position: 'bottomleft',
+            separator: ', ',
+            emptyString: 'Udenfor kortområde',
+            lngFirst: false,
+            numDigits: 6,
+            lngFormatter: function(num) {
+                return num.toFixed(6);
+            },
+            latFormatter: function(num) {
+                return num.toFixed(6);
+            }
         }).addTo(map);
+
+        // Opret koordinat-vælger gruppe
+        var koordinatGruppe = L.layerGroup();
+        
+        // Tilføj koordinat-vælger
+        var marker = null;
+        var koordinatInfo = L.control({position: 'topleft'});
+        
+        koordinatInfo.onAdd = function(map) {
+            this._div = L.DomUtil.create('div', 'koordinat-info');
+            this._div.style.background = 'white';
+            this._div.style.padding = '6px 8px';
+            this._div.style.margin = '10px 0 0 0';
+            this._div.style.border = '2px solid rgba(0,0,0,0.2)';
+            this._div.style.borderRadius = '4px';
+            this._div.innerHTML = '<strong>Valgte koordinater</strong><br>Klik på kortet for at vælge punkt';
+            return this._div;
+        };
+
+        var clickHandler = function(e) {
+            if (marker) {
+                koordinatGruppe.removeLayer(marker);
+            }
+            marker = L.marker(e.latlng);
+            koordinatGruppe.addLayer(marker);
+            var coords = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+            koordinatInfo._div.innerHTML = '<strong>Valgte koordinater</strong><br>' + 
+                                         '<div style="margin: 5px 0;">' +
+                                         'Lat: ' + e.latlng.lat.toFixed(6) + '<br>' +
+                                         'Lng: ' + e.latlng.lng.toFixed(6) + '</div>' +
+                                         '<button onclick="navigator.clipboard.writeText(\'' + coords + '\').then(() => { ' +
+                                         'this.innerHTML=\'Kopieret!\'; ' +
+                                         'setTimeout(() => { this.innerHTML=\'Kopier koordinater\'; }, 2000);' +
+                                         ' })" ' +
+                                         'style="padding: 4px 8px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px;">' +
+                                         'Kopier koordinater</button>';
+            
+            // Automatisk kopiering
+            navigator.clipboard.writeText(coords).then(() => {
+                console.log('Koordinater kopieret: ' + coords);
+            });
+        };
+
+        // Tilføj koordinat-gruppen til overlaymaps
+        var overlayMaps = {
+            "Historisk kort overlay": historiskKort,
+            "Koordinat vælger": koordinatGruppe
+        };
+
+        // Når koordinat-laget aktiveres/deaktiveres
+        map.on('overlayadd', function(e) {
+            if (e.name === "Koordinat vælger") {
+                koordinatInfo.addTo(map);
+                map.on('click', clickHandler);
+            }
+        });
+
+        map.on('overlayremove', function(e) {
+            if (e.name === "Koordinat vælger") {
+                map.removeControl(koordinatInfo);
+                map.off('click', clickHandler);
+                if (marker) {
+                    koordinatGruppe.removeLayer(marker);
+                    marker = null;
+                }
+            }
+        });
+
+        // Tilføj lag control med både base og overlay maps
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+        
+        // Start med OSM som baggrund og historisk kort som overlay
+        osm.addTo(map);
+        historiskKort.addTo(map);
+
+        // Tilføj søgefunktion
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            position: 'topleft',
+            placeholder: 'Søg efter adresse...',
+            geocoder: new L.Control.Geocoder.Nominatim({
+                language: 'da' // Dansk sprog
+            })
+        }).addTo(map);
+
+        // Håndter søgeresultater
+        geocoder.on('markgeocode', function(e) {
+            var bbox = e.geocode.bbox;
+            var poly = L.polygon([
+                bbox.getSouthEast(),
+                bbox.getNorthEast(),
+                bbox.getNorthWest(),
+                bbox.getSouthWest()
+            ]);
+            map.fitBounds(poly.getBounds());
+        });
     </script>
 </body>
 </html>
