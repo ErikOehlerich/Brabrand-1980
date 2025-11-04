@@ -203,18 +203,42 @@
 
         // Funktion: indlæs Excel (xlsx) fra en sti og tilføj punkter til lokaliteterLayer
         function loadExcelToMap(path) {
+            console.log('Forsøger at indlæse Excel fra:', path);
             fetch(encodeURI(path)).then(function(resp) {
+                console.log('Fetch response:', resp.status, resp.statusText);
+                if (!resp.ok) throw new Error('Fetch fejlede: ' + resp.status + ' ' + resp.statusText);
                 return resp.arrayBuffer();
             }).then(function(ab) {
-                var workbook = XLSX.read(ab, {type: 'array'});
+                var workbook;
+                try {
+                    workbook = XLSX.read(ab, {type: 'array'});
+                } catch (err) {
+                    console.error('XLSX.read fejlede:', err);
+                    // Prøv fallback som binary string
+                    try {
+                        var s = new Uint8Array(ab);
+                        var binary = Array.prototype.map.call(s, function(ch){ return String.fromCharCode(ch); }).join('');
+                        workbook = XLSX.read(binary, {type: 'binary'});
+                        console.warn('Brugte binary-fallback til at læse workbook');
+                    } catch (err2) {
+                        throw err2;
+                    }
+                }
+
+                console.log('Workbook sheets:', workbook.SheetNames);
                 var firstSheetName = workbook.SheetNames[0];
                 var worksheet = workbook.Sheets[firstSheetName];
                 var rows = XLSX.utils.sheet_to_json(worksheet, {defval: ''});
 
-                console.log('Excel rækker:', rows.length);
-                var added = 0;
+                console.log('Excel rækker (parsed):', rows.length);
+                if (rows.length === 0) {
+                    console.warn('Ingen rækker fundet i arket:', firstSheetName, '-- tjek kolonneoverskrifter.');
+                }
 
-                rows.forEach(function(row) {
+                var added = 0;
+                rows.forEach(function(row, i) {
+                    if (i < 3) console.log('Række', i, row); // vis et par rækker til debugging
+
                     var projekt = row['Projekt'] || row['Project'] || row['projekt'] || '';
                     var adresse = row['Adresse'] || row['Address'] || row['adresse'] || '';
                     var årstal = row['Årstal'] || row['Aarstal'] || row['År'] || row['Year'] || '';
@@ -222,24 +246,52 @@
                     var note = row['Note'] || row['Bemærkning'] || row['Note/Comment'] || '';
 
                     var lat = null, lng = null;
+                    // Støt flere formater: separate kolonner, "lat,lng", semikolon, komma decimal mv.
+                    function parseNumber(v) {
+                        if (v === null || v === undefined) return NaN;
+                        var s = String(v).trim();
+                        if (s === '') return NaN;
+                        s = s.replace(',', '.'); // decimalkomma -> punktum
+                        return parseFloat(s);
+                    }
+
                     if (row['Lat'] !== undefined && row['Lng'] !== undefined) {
-                        lat = parseFloat(row['Lat']);
-                        lng = parseFloat(row['Lng']);
+                        lat = parseNumber(row['Lat']);
+                        lng = parseNumber(row['Lng']);
                     } else if (row['Latitude'] !== undefined && row['Longitude'] !== undefined) {
-                        lat = parseFloat(row['Latitude']);
-                        lng = parseFloat(row['Longitude']);
+                        lat = parseNumber(row['Latitude']);
+                        lng = parseNumber(row['Longitude']);
                     } else if (row['Koordinater'] || row['Koordinat'] || row['Coordinates']) {
                         var coordStr = (row['Koordinater'] || row['Koordinat'] || row['Coordinates']).toString();
-                        var m = coordStr.match(/[-+]?\d*\.?\d+/g);
+                        // accepter "lat, lng", "lng;lat" osv.
+                        var m = coordStr.match(/[-+]?\d+[.,]?\d*/g);
                         if (m && m.length >= 2) {
-                            lat = parseFloat(m[0]);
-                            lng = parseFloat(m[1]);
+                            var a = parseNumber(m[0]);
+                            var b = parseNumber(m[1]);
+                            // best guess: hvis første værdi > 90 antag lng,lat byttet
+                            if (Math.abs(a) > 90 && Math.abs(b) <= 90) {
+                                lng = a; lat = b;
+                            } else {
+                                lat = a; lng = b;
+                            }
                         }
                     }
 
+                    // ekstra: prøv felter med semikolon eller space-separeret
+                    if ((!isFinite(lat) || !isFinite(lng)) && (row['Coord'] || row['coord'])) {
+                        var c = (row['Coord'] || row['coord']).toString().match(/[-+]?\d+[.,]?\d*/g);
+                        if (c && c.length >= 2) { lat = parseNumber(c[0]); lng = parseNumber(c[1]); }
+                    }
+
                     if (!isFinite(lat) || !isFinite(lng)) {
-                        console.warn('Ugyldige koordinater for række:', row);
+                        console.warn('Ugyldige koordinater for række (springes over):', row);
                         return;
+                    }
+
+                    // Hvis lat/lng byttet (fx lat > 90), prøv at byt
+                    if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) {
+                        console.warn('Ser ud som byttede koordinater, bytter automatisk for række:', row);
+                        var tmp = lat; lat = lng; lng = tmp;
                     }
 
                     var marker = L.circleMarker([lat, lng], {
@@ -264,18 +316,14 @@
                     added++;
                 });
 
-                layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)');
+                // Tilføj overlay én gang
+                try { layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)'); } catch(e){}
 
                 console.log('Markers tilføjet fra Excel:', added);
-
-                // Hvis du vil se dem med det samme, aktiver laget:
-                if (added > 0) {
-                    lokaliteterLayer.addTo(map);
-                } else {
-                    console.warn('Ingen gyldige punkter fundet i Excel-filen.');
-                }
+                if (added > 0) lokaliteterLayer.addTo(map);
+                else console.warn('Ingen gyldige punkter fundet i Excel-filen.');
             }).catch(function(err){
-                console.error('Kunne ikke indlæse Excel:', err);
+                console.error('Kunne ikke indlæse eller parse Excel:', err);
             });
         }
 
