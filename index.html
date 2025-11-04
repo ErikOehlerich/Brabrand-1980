@@ -428,11 +428,26 @@
                         var tmp = lat; lat = lng; lng = tmp;
                     }
 
+                    // bestem farve ud fra typen af byggeri
+                    var typeKey = (typeByg || '').toLowerCase();
+                    var fillColor = '#666666'; // fallback (ukendt)
+                    if (typeKey.indexOf('offent') !== -1 || typeKey.indexOf('offentlig') !== -1) {
+                        fillColor = '#B22222'; // røde: Offentlige bygninger
+                    } else if (typeKey.indexOf('erhverv') !== -1) {
+                        fillColor = '#1E90FF'; // blå: Erhvervsbyggerier
+                    } else if (typeKey.indexOf('boliggrupp') !== -1 || typeKey.indexOf('boliggruppe') !== -1) {
+                        fillColor = '#FFD700'; // gul: Boliggrupper
+                    } else if (typeKey.indexOf('enfamil') !== -1 || typeKey.indexOf('en-famil') !== -1 || typeKey.indexOf('en familie') !== -1) {
+                        fillColor = '#2e7d32'; // grøn: Enfamilieboliger
+                    } else if (typeKey.indexOf('bolig') !== -1) {
+                        fillColor = '#FFD700'; // generisk bolig -> gul
+                    }
+
                     var marker = L.circleMarker([lat, lng], {
                         radius: 6,
-                        color: '#B22222',
+                        color: fillColor,
                         weight: 1,
-                        fillColor: '#B22222',
+                        fillColor: fillColor,
                         fillOpacity: 0.9
                     });
 
