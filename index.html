@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-mouse-position@1.2.0/src/L.Control.MousePosition.css"/>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         #map { height: 100vh; width: 100vw; }
         .leaflet-control-geocoder {
@@ -128,7 +129,13 @@
             if (marker) {
                 koordinatGruppe.removeLayer(marker);
             }
-            marker = L.marker(e.latlng);
+            marker = L.circleMarker(e.latlng, {
+                radius: 6,
+                color: '#d9534f',
+                weight: 1,
+                fillColor: '#d9534f',
+                fillOpacity: 0.9
+            });
             koordinatGruppe.addLayer(marker);
 
             var lat = e.latlng.lat.toFixed(6);
@@ -188,15 +195,105 @@
             "Koordinat vælger": koordinatGruppe
         };
 
-        // Tilføj lag control med både base og overlay maps
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
-        
+        // Opret lag til lokaliteter (så det kan toggles)
+        var lokaliteterLayer = L.layerGroup();
+
+        // Erstat tidligere én-liners control med en variabel, så vi kan tilføje overlays senere
+        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        // Funktion: indlæs Excel (xlsx) fra en sti og tilføj punkter til lokaliteterLayer
+        function loadExcelToMap(path) {
+            fetch(encodeURI(path)).then(function(resp) {
+                return resp.arrayBuffer();
+            }).then(function(ab) {
+                var workbook = XLSX.read(ab, {type: 'array'});
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+                var rows = XLSX.utils.sheet_to_json(worksheet, {defval: ''});
+
+                console.log('Excel rækker:', rows.length);
+                var added = 0;
+
+                rows.forEach(function(row) {
+                    var projekt = row['Projekt'] || row['Project'] || row['projekt'] || '';
+                    var adresse = row['Adresse'] || row['Address'] || row['adresse'] || '';
+                    var årstal = row['Årstal'] || row['Aarstal'] || row['År'] || row['Year'] || '';
+                    var typeByg = row['Type af byggeri'] || row['Type'] || row['type'] || '';
+                    var note = row['Note'] || row['Bemærkning'] || row['Note/Comment'] || '';
+
+                    var lat = null, lng = null;
+                    if (row['Lat'] !== undefined && row['Lng'] !== undefined) {
+                        lat = parseFloat(row['Lat']);
+                        lng = parseFloat(row['Lng']);
+                    } else if (row['Latitude'] !== undefined && row['Longitude'] !== undefined) {
+                        lat = parseFloat(row['Latitude']);
+                        lng = parseFloat(row['Longitude']);
+                    } else if (row['Koordinater'] || row['Koordinat'] || row['Coordinates']) {
+                        var coordStr = (row['Koordinater'] || row['Koordinat'] || row['Coordinates']).toString();
+                        var m = coordStr.match(/[-+]?\d*\.?\d+/g);
+                        if (m && m.length >= 2) {
+                            lat = parseFloat(m[0]);
+                            lng = parseFloat(m[1]);
+                        }
+                    }
+
+                    if (!isFinite(lat) || !isFinite(lng)) {
+                        console.warn('Ugyldige koordinater for række:', row);
+                        return;
+                    }
+
+                    var marker = L.circleMarker([lat, lng], {
+                        radius: 6,
+                        color: '#B22222',
+                        weight: 1,
+                        fillColor: '#B22222',
+                        fillOpacity: 0.9
+                    });
+
+                    var popup = '<div style="max-width:260px;font-size:14px;">' +
+                                (projekt ? '<strong>' + projekt + '</strong><br>' : '') +
+                                (adresse ? adresse + '<br>' : '') +
+                                (årstal ? 'Årstal: ' + årstal + '<br>' : '') +
+                                (typeByg ? 'Type: ' + typeByg + '<br>' : '') +
+                                (note ? '<em>' + note + '</em><br>' : '') +
+                                '<small style="color:#666;">' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</small>' +
+                                '</div>';
+
+                    marker.bindPopup(popup);
+                    lokaliteterLayer.addLayer(marker);
+                    added++;
+                });
+
+                layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)');
+
+                console.log('Markers tilføjet fra Excel:', added);
+
+                // Hvis du vil se dem med det samme, aktiver laget:
+                if (added > 0) {
+                    lokaliteterLayer.addTo(map);
+                } else {
+                    console.warn('Ingen gyldige punkter fundet i Excel-filen.');
+                }
+            }).catch(function(err){
+                console.error('Kunne ikke indlæse Excel:', err);
+            });
+        }
+
+        // Indlæs din fil (opdateret navn)
+        loadExcelToMap('./data/FM.xlsx');
+
         // Start med OSM som baggrund og historisk kort som overlay
         osm.addTo(map);
         historiskKort.addTo(map);
 
         // Tilføj punkt for Gjellerupskolen/Sødalskolen
-        var skoleMarker = L.marker([56.149854, 10.137970]).addTo(map);
+        var skoleMarker = L.circleMarker([56.149854, 10.137970], {
+            radius: 8,
+            color: '#B22222',
+            weight: 1,
+            fillColor: '#B22222',
+            fillOpacity: 0.9
+        }).addTo(map);
         
         // Opret popup indhold med billede og information
         var popupContent = `
@@ -226,6 +323,8 @@
                     </tr>
                 </table>
             </div>
+
+            
         `;
 
         // Tilføj popup til markøren
