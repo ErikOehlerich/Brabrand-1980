@@ -195,11 +195,145 @@
             "Koordinat vælger": koordinatGruppe
         };
 
+        // Tilføj layer control så menuen med kortlag vises
+        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+ 
+        // Opacity-kontrol til historiske overlay (kompakt, foldbar)
+        var opacityControl = L.control({ position: 'topright' });
+        opacityControl.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'opacity-control');
+            div.style.background = 'rgba(255,255,255,0.95)';
+            div.style.padding = '4px';
+            div.style.margin = '10px';
+            div.style.border = '1px solid rgba(0,0,0,0.15)';
+            div.style.borderRadius = '4px';
+            div.style.fontSize = '12px';
+            div.style.width = '140px';
+            // foldbar header + skjult indhold
+            div.innerHTML = '<div id="opacityHeader" style="cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center;">' +
+                            '<span>Historisk</span><span style="font-size:12px;" id="opacityToggleIcon">▾</span></div>' +
+                            '<div id="opacityContent" style="display:block;margin-top:6px;">' +
+                            '<div style="font-size:12px;margin-bottom:4px;">Opacity</div>' +
+                            '<input id="overlayOpacity" type="range" min="0" max="100" value="100" style="width:120px;"><br>' +
+                            '<div style="font-size:11px;margin-top:4px;"><span id="opacityVal">100%</span></div>' +
+                            '</div>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        opacityControl.addTo(map);
+
+        // fold/ud for opacity
+        (function(){
+            var hdr = document.getElementById('opacityHeader');
+            var content = document.getElementById('opacityContent');
+            var icon = document.getElementById('opacityToggleIcon');
+            if (hdr && content && icon) {
+                hdr.addEventListener('click', function(){
+                    if (content.style.display === 'none') { content.style.display = 'block'; icon.textContent = '▾'; }
+                    else { content.style.display = 'none'; icon.textContent = '▸'; }
+                });
+            }
+        })();
+
+        document.getElementById('overlayOpacity').addEventListener('input', function(e) {
+            var p = parseInt(this.value, 10) / 100;
+            document.getElementById('opacityVal').textContent = this.value + '%';
+            if (historiskKort && typeof historiskKort.setOpacity === 'function') historiskKort.setOpacity(p);
+            if (historiskKort1953 && typeof historiskKort1953.setOpacity === 'function') historiskKort1953.setOpacity(p);
+        });
+
         // Opret lag til lokaliteter (så det kan toggles)
         var lokaliteterLayer = L.layerGroup();
+        // Liste over alle markører (bruges til filtrering)
+        var allMarkers = [];
+        
+        // Year-filter funktioner og UI (kompakt, foldbar)
+        var yearFilterControl = L.control({ position: 'topright' });
+        yearFilterControl.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'year-filter-control');
+            div.style.background = 'rgba(255,255,255,0.95)';
+            div.style.padding = '4px';
+            div.style.margin = '10px';
+            div.style.border = '1px solid rgba(0,0,0,0.15)';
+            div.style.borderRadius = '4px';
+            div.style.fontSize = '12px';
+            div.style.width = '160px';
+            div.innerHTML = '<div id="yearHeader" style="cursor:pointer;font-weight:600;display:flex;justify-content:space-between;align-items:center;">' +
+                            '<span>Filter år</span><span style="font-size:12px;" id="yearToggleIcon">▾</span></div>' +
+                            '<div id="yearContent" style="display:block;margin-top:6px;font-size:12px;">' +
+                            '<div style="font-size:11px;margin-bottom:4px;">Fra: <span id="yrMinLbl">—</span> Til: <span id="yrMaxLbl">—</span></div>' +
+                            '<input id="yrMin" type="range" min="1900" max="2100" value="1900" style="width:140px;"><br>' +
+                            '<input id="yrMax" type="range" min="1900" max="2100" value="2100" style="width:140px;margin-top:6px;"><br>' +
+                            '<label style="font-size:11px;margin-top:6px;display:block;"><input id="yrUnknown" type="checkbox" checked> Vis ukendte år</label>' +
+                            '</div>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        yearFilterControl.addTo(map);
 
-        // Erstat tidligere én-liners control med en variabel, så vi kan tilføje overlays senere
-        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+        // fold/ud for year filter
+        (function(){
+            var hdr = document.getElementById('yearHeader');
+            var content = document.getElementById('yearContent');
+            var icon = document.getElementById('yearToggleIcon');
+            if (hdr && content && icon) {
+                hdr.addEventListener('click', function(){
+                    if (content.style.display === 'none') { content.style.display = 'block'; icon.textContent = '▾'; }
+                    else { content.style.display = 'none'; icon.textContent = '▸'; }
+                });
+            }
+        })();
+
+        function applyYearFilter() {
+            var min = parseInt(document.getElementById('yrMin').value, 10);
+            var max = parseInt(document.getElementById('yrMax').value, 10);
+            var showUnknown = document.getElementById('yrUnknown').checked;
+            allMarkers.forEach(function(m) {
+                var y = m._year;
+                var inRange = false;
+                if (isFinite(y)) inRange = (y >= min && y <= max);
+                else inRange = showUnknown;
+
+                // tilføj/fjern fra lokaliteterLayer
+                if (inRange) {
+                    if (!lokaliteterLayer.hasLayer(m)) lokaliteterLayer.addLayer(m);
+                } else {
+                    if (lokaliteterLayer.hasLayer(m)) lokaliteterLayer.removeLayer(m);
+                }
+            });
+        }
+
+        function updateYearFilterUI(min, max) {
+            var minInput = document.getElementById('yrMin');
+            var maxInput = document.getElementById('yrMax');
+            var minLbl = document.getElementById('yrMinLbl');
+            var maxLbl = document.getElementById('yrMaxLbl');
+            if (!minInput || !maxInput) return;
+            minInput.min = min;
+            minInput.max = max;
+            maxInput.min = min;
+            maxInput.max = max;
+            minInput.value = min;
+            maxInput.value = max;
+            minLbl.textContent = min;
+            maxLbl.textContent = max;
+
+            // events
+            minInput.oninput = function() {
+                var v = parseInt(this.value,10);
+                if (v > parseInt(maxInput.value,10)) { this.value = maxInput.value; v = parseInt(this.value,10); }
+                minLbl.textContent = v;
+                applyYearFilter();
+            };
+            maxInput.oninput = function() {
+                var v = parseInt(this.value,10);
+                if (v < parseInt(minInput.value,10)) { this.value = minInput.value; v = parseInt(this.value,10); }
+                maxLbl.textContent = v;
+                applyYearFilter();
+            };
+            var unk = document.getElementById('yrUnknown');
+            unk.onchange = applyYearFilter;
+        }
 
         // Funktion: indlæs Excel (xlsx) fra en sti og tilføj punkter til lokaliteterLayer
         function loadExcelToMap(path) {
@@ -304,6 +438,11 @@
 
                     // Gem koordinater som skjult data på markøren (ikke vist i popup)
                     marker._coords = { lat: lat, lng: lng };
+                    // Gem årstal på markøren (nummer eller NaN)
+                    var yearNum = parseInt(String(årstal).replace(/[^\d\-]/g, ''), 10);
+                    marker._year = isFinite(yearNum) ? yearNum : NaN;
+                    // Gem øvrige felter (kan bruges senere)
+                    marker._meta = { projekt: projekt, adresse: adresse, type: typeByg, note: note };
 
                     var popup = '<div style="max-width:260px;font-size:14px;line-height:1.3;">' +
                                 (projekt ? '<div><strong>Projekt:</strong> ' + projekt + '</div>' : '') +
@@ -314,20 +453,37 @@
                                 '</div>';
  
                     marker.bindPopup(popup);
+                    // Gem i master-listen og i layeret (initialt synligt)
+                    allMarkers.push(marker);
                     lokaliteterLayer.addLayer(marker);
                     added++;
                 });
-
+ 
                 // Tilføj overlay én gang
                 try { layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)'); } catch(e){}
-
+ 
                 console.log('Markers tilføjet fra Excel:', added);
-                if (added > 0) lokaliteterLayer.addTo(map);
-                else console.warn('Ingen gyldige punkter fundet i Excel-filen.');
-            }).catch(function(err){
-                console.error('Kunne ikke indlæse eller parse Excel:', err);
-            });
-        }
+                // Opsæt år-slider hvis vi har årstal
+                var years = allMarkers.map(function(m){ return m._year; }).filter(isFinite);
+                if (years.length > 0) {
+                    var minY = Math.min.apply(null, years);
+                    var maxY = Math.max.apply(null, years);
+                    // Start sliderens mindste værdi ved 1900 så kortet kan være blankt til 1900
+                    var startMin = 1900;
+                    updateYearFilterUI(startMin, maxY);
+                     // initial filter (vis alle mellem min og max)
+                     applyYearFilter();
+                } else {
+                    // Hvis ingen årstal, skjul år-filter label
+                    document.getElementById('yrMinLbl').textContent = '—';
+                    document.getElementById('yrMaxLbl').textContent = '—';
+                }
+                 if (added > 0) lokaliteterLayer.addTo(map);
+                 else console.warn('Ingen gyldige punkter fundet i Excel-filen.');
+             }).catch(function(err){
+                 console.error('Kunne ikke indlæse eller parse Excel:', err);
+             });
+         }
 
         // Indlæs din fil fra mappen "excel"
         loadExcelToMap('./excel/FM.xlsx');
