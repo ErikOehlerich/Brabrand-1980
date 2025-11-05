@@ -18,16 +18,33 @@
             border-radius: 4px;
             box-shadow: 0 1px 5px rgba(0,0,0,0.65);
         }
+        /* Kort-overskrift */
+        #map-title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1002;
+            background: rgba(255,255,255,0.95);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div id="map-title">Projekter af Friis &amp; Moltke i Brabrand og omegn</div>
     <script>
         var map = L.map('map', {
             center: [56.158, 10.139],
             zoom: 15,
             maxBounds: [[55.9, 9.9], [56.4, 10.4]], // Meget løsere bounds
-            maxBoundsViscosity: 0.3 // Blødere grænser
+            maxBoundsViscosity: 0.3, // Blødere grænser
+            attributionControl: false // fjern standard Leaflet-attribution
         });
 
         // Base maps
@@ -506,6 +523,44 @@
         // Start med OSM som baggrund og historisk kort som overlay
         osm.addTo(map);
         historiskKort.addTo(map);
+        
+        // Legend (bottom-left) med farveforklaring
+        var legend = L.control({position: 'bottomleft'});
+        legend.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'legend');
+            div.style.background = 'rgba(255,255,255,0.95)';
+            div.style.padding = '6px 8px';
+            div.style.margin = '6px';
+            div.style.border = '1px solid rgba(0,0,0,0.15)';
+            div.style.borderRadius = '4px';
+            div.style.fontSize = '12px';
+            div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
+            div.innerHTML =
+                '<div style="font-weight:600;margin-bottom:6px;">Farver (Type af byggeri)</div>' +
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#B22222;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Offentlige bygninger</div>' +
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#1E90FF;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Erhvervsbyggerier</div>' +
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#FFD700;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Boliggrupper</div>' +
+                '<div><span style="display:inline-block;width:12px;height:12px;background:#2e7d32;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Enfamilieboliger</div>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        legend.addTo(map);
+
+        // Footer (bottom-right) med kun dit navn
+        var footer = L.control({position: 'bottomright'});
+        footer.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'map-footer');
+            div.style.background = 'transparent';
+            div.style.padding = '4px 8px';
+            div.style.margin = '6px';
+            div.style.fontSize = '12px';
+            div.style.color = '#222';
+            div.style.opacity = '0.95';
+            div.style.pointerEvents = 'none';
+            div.innerHTML = 'Erik Oehlerich';
+            return div;
+        };
+        footer.addTo(map);
 
         // Det manuelle skolepunkt er fjernet (marker oprettes nu kun fra Excel-data)
         // Tilføj søgefunktion
