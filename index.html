@@ -110,6 +110,22 @@
             updateWhenIdle: true
         });
 
+        // Nyt historisk lag fra mappen 1840-1890
+        var historiskKort1840 = L.tileLayer('./1840-1890/{z}/{x}/{y}.png', {
+            attribution: '© Erik Oehlerich',
+            minZoom: 11,
+            maxZoom: 17,
+            tileSize: 256,
+            opacity: 1.0,
+            bounds: [[55.9, 9.9], [56.4, 10.4]],
+            noWrap: true,
+            errorTileUrl: '',
+            updateWhenIdle: true
+        });
+
+        // Samling af alle historiske overlays (bruges til initial visning og opacity-kontrol)
+        var historiskeOverlays = [historiskKort, historiskKort1953, historiskKort1840];
+
         // Definér base og overlay maps
         var baseMaps = {
             "OpenStreetMap": osm,
@@ -209,12 +225,22 @@
         var overlayMaps = {
             "Brabrand 1980-2001": historiskKort,
             "Brabrand 1953-1976": historiskKort1953,
+            "Brabrand 1840-1890": historiskKort1840,
             "Koordinat vælger": koordinatGruppe
         };
 
         // Tilføj layer control så menuen med kortlag vises
         var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
- 
+
+        // Tilføj alle historiske overlays som synlige ved load, så man kan se alle kort-versioner samtidigt
+        // (bruges også til at sikre korrekt stacking order)
+        historiskeOverlays.forEach(function(layer, i){
+            if (layer) {
+                layer.addTo(map);
+                if (typeof layer.setZIndex === 'function') layer.setZIndex(100 + i);
+            }
+        });
+
         // Opacity-kontrol til historiske overlay (kompakt, foldbar)
         var opacityControl = L.control({ position: 'topright' });
         opacityControl.onAdd = function(map) {
@@ -255,8 +281,12 @@
         document.getElementById('overlayOpacity').addEventListener('input', function(e) {
             var p = parseInt(this.value, 10) / 100;
             document.getElementById('opacityVal').textContent = this.value + '%';
-            if (historiskKort && typeof historiskKort.setOpacity === 'function') historiskKort.setOpacity(p);
-            if (historiskKort1953 && typeof historiskKort1953.setOpacity === 'function') historiskKort1953.setOpacity(p);
+            // Sæt opacity for alle historiske overlays (loop for fremtidig udvidelse)
+            historiskeOverlays.forEach(function(layer){
+                if (layer && typeof layer.setOpacity === 'function') {
+                    layer.setOpacity(p);
+                }
+            });
         });
 
         // Opret lag til lokaliteter (så det kan toggles)
