@@ -232,14 +232,12 @@
         // Tilføj layer control så menuen med kortlag vises
         var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-        // Tilføj alle historiske overlays som synlige ved load, så man kan se alle kort-versioner samtidigt
-        // (bruges også til at sikre korrekt stacking order)
-        historiskeOverlays.forEach(function(layer, i){
-            if (layer) {
-                layer.addTo(map);
-                if (typeof layer.setZIndex === 'function') layer.setZIndex(100 + i);
-            }
-        });
+        // Start med kun 1980-kortet aktivt. De andre historiske overlays forbliver slukket
+        // i lag-kontrollen, indtil brugeren selv tænder dem.
+        if (historiskKort) {
+            historiskKort.addTo(map);
+            if (typeof historiskKort.setZIndex === 'function') historiskKort.setZIndex(100);
+        }
 
         // Opacity-kontrol til historiske overlay (kompakt, foldbar)
         var opacityControl = L.control({ position: 'topright' });
