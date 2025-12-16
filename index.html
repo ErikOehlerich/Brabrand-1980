@@ -462,7 +462,10 @@
                     var adresse = row['Adresse'] || row['Address'] || row['adresse'] || '';
                     var årstal = row['Årstal'] || row['Aarstal'] || row['År'] || row['Year'] || '';
                     var typeByg = row['Type af byggeri'] || row['Type'] || row['type'] || '';
-                    var note = row['Note'] || row['Bemærkning'] || row['Note/Comment'] || '';
+                    var note = row['evt. note'] || row['evt. Note'] || row['Note'] || row['Bemærkning'] || row['Note/Comment'] || row['note'] || row['bemærkning'] || row['Notat'] || row['notat'] || row['Notes'] || row['notes'] || '';
+                    
+                    // Debug: vis note-værdi for første 3 rækker
+                    if (i < 3) console.log('Note værdi for række', i, ':', note);
 
                     var lat = null, lng = null;
                     // Støt flere formater: separate kolonner, "lat,lng", semikolon, komma decimal mv.
@@ -549,7 +552,7 @@
                                 (adresse ? '<div><strong>Adresse:</strong> ' + adresse + '</div>' : '') +
                                 (årstal ? '<div><strong>Årstal:</strong> ' + årstal + '</div>' : '') +
                                 (typeByg ? '<div><strong>Type:</strong> ' + typeByg + '</div>' : '') +
-                                (note ? '<div><strong>Note:</strong> <em>' + note + '</em></div>' : '') +
+                                (note ? '<div><strong>Note:</strong> ' + note + '</div>' : '') +
                                 '</div>';
  
                     marker.bindPopup(popup);
