@@ -329,6 +329,43 @@
             }
         })();
 
+        function updateTypeCounts() {
+            var counts = {
+                offentlig: 0,
+                erhverv: 0,
+                bolig: 0,
+                enfamilie: 0
+            };
+
+            allMarkers.forEach(function(m) {
+                if (lokaliteterLayer.hasLayer(m)) {
+                    var type = (m._meta && m._meta.type) ? m._meta.type.toLowerCase() : '';
+                    if (type.indexOf('offent') !== -1 || type.indexOf('offentlig') !== -1) {
+                        counts.offentlig++;
+                    } else if (type.indexOf('erhverv') !== -1) {
+                        counts.erhverv++;
+                    } else if (type.indexOf('boliggrupp') !== -1 || type.indexOf('boliggruppe') !== -1) {
+                        counts.bolig++;
+                    } else if (type.indexOf('enfamil') !== -1 || type.indexOf('en-famil') !== -1 || type.indexOf('en familie') !== -1) {
+                        counts.enfamilie++;
+                    } else if (type.indexOf('bolig') !== -1) {
+                        counts.bolig++;
+                    }
+                }
+            });
+
+            // Opdater tællerne i oversigten
+            var offentligEl = document.getElementById('count-offentlig');
+            var erhvervEl = document.getElementById('count-erhverv');
+            var boligEl = document.getElementById('count-bolig');
+            var enfamilieEl = document.getElementById('count-enfamilie');
+
+            if (offentligEl) offentligEl.textContent = '(' + counts.offentlig + ')';
+            if (erhvervEl) erhvervEl.textContent = '(' + counts.erhverv + ')';
+            if (boligEl) boligEl.textContent = '(' + counts.bolig + ')';
+            if (enfamilieEl) enfamilieEl.textContent = '(' + counts.enfamilie + ')';
+        }
+
         function applyYearFilter() {
             var min = parseInt(document.getElementById('yrMin').value, 10);
             var max = parseInt(document.getElementById('yrMax').value, 10);
@@ -346,6 +383,9 @@
                     if (lokaliteterLayer.hasLayer(m)) lokaliteterLayer.removeLayer(m);
                 }
             });
+            
+            // Opdater tællerne efter filtering
+            updateTypeCounts();
         }
 
         function updateYearFilterUI(min, max) {
@@ -523,6 +563,8 @@
                 try { layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)'); } catch(e){}
  
                 console.log('Markers tilføjet fra Excel:', added);
+                // Opdater tællerne efter indlæsning
+                updateTypeCounts();
                 // Opsæt år-slider hvis vi har årstal
                 var years = allMarkers.map(function(m){ return m._year; }).filter(isFinite);
                 if (years.length > 0) {
@@ -565,10 +607,10 @@
             div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
             div.innerHTML =
                 '<div style="font-weight:600;margin-bottom:6px;">Farver (Type af byggeri)</div>' +
-                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#B22222;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Offentlige bygninger</div>' +
-                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#1E90FF;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Erhvervsbyggerier</div>' +
-                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#FFD700;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Boliggrupper</div>' +
-                '<div><span style="display:inline-block;width:12px;height:12px;background:#2e7d32;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Enfamilieboliger</div>';
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#B22222;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Offentlige bygninger <span id="count-offentlig" style="font-weight:600;color:#B22222;">(0)</span></div>' +
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#1E90FF;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Erhvervsbyggerier <span id="count-erhverv" style="font-weight:600;color:#1E90FF;">(0)</span></div>' +
+                '<div style="margin-bottom:4px;"><span style="display:inline-block;width:12px;height:12px;background:#FFD700;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Boliggrupper <span id="count-bolig" style="font-weight:600;color:#FFD700;">(0)</span></div>' +
+                '<div><span style="display:inline-block;width:12px;height:12px;background:#2e7d32;margin-right:8px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle"></span>Enfamilieboliger <span id="count-enfamilie" style="font-weight:600;color:#2e7d32;">(0)</span></div>';
             L.DomEvent.disableClickPropagation(div);
             return div;
         };
