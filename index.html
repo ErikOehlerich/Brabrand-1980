@@ -878,9 +878,6 @@
                     added++;
                 });
  
-                // Tilføj overlay én gang
-                try { layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)'); } catch(e){}
- 
                 console.log('Markers tilføjet fra Excel:', added);
                 // Opdater tællerne efter indlæsning
                 updateTypeCounts();
@@ -899,8 +896,14 @@
                     document.getElementById('yrMinLbl').textContent = '—';
                     document.getElementById('yrMaxLbl').textContent = '—';
                 }
-                 if (added > 0) lokaliteterLayer.addTo(map);
-                 else console.warn('Ingen gyldige punkter fundet i Excel-filen.');
+                // Tilføj lokaliteter-laget til kortet automatisk
+                if (added > 0) {
+                    lokaliteterLayer.addTo(map);
+                    // Tilføj også til layer control så det kan tændes/slukkes
+                    layerControl.addOverlay(lokaliteterLayer, 'Lokaliteter (Excel)');
+                } else {
+                    console.warn('Ingen gyldige punkter fundet i Excel-filen.');
+                }
              }).catch(function(err){
                  console.error('Kunne ikke indlæse eller parse Excel:', err);
              });
