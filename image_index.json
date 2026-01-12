@@ -2,6 +2,7 @@
   "2": {
     "billeder": [
       "B2017_converted.jpg",
+      "B2017_converted.jpg",
       "IMG20251102133017.jpg",
       "IMG20251104114454.jpg"
     ],
@@ -88,7 +89,6 @@
       "IMG20251112100944.jpg",
       "IMG20251112102128.jpg",
       "IMG20251112102634.jpg",
-      "IMG20251112103409.jpg",
       "IMG20251112104703.jpg",
       "IMG20251112104837.jpg",
       "IMG20251112105016.jpg",
@@ -295,15 +295,26 @@
     "billeder": [
       "IMG20251123150130.jpg"
     ],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(1).jpg",
+      "Unavngiven præsentation(2).jpg",
+      "Unavngiven præsentation(3).jpg",
+      "Unavngiven præsentation(4).jpg"
+    ]
   },
   "46": {
     "billeder": [],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(5).jpg",
+      "Unavngiven præsentation(6).jpg"
+    ]
   },
   "47": {
     "billeder": [],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(7).jpg",
+      "Unavngiven præsentation(8).jpg"
+    ]
   },
   "48": {
     "billeder": [
@@ -311,11 +322,20 @@
       "IMG20251106120351.jpg",
       "IMG20251112105641.jpg"
     ],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(10).jpg",
+      "Unavngiven præsentation(11).jpg",
+      "Unavngiven præsentation(12).jpg",
+      "Unavngiven præsentation(13).jpg",
+      "Unavngiven præsentation(9).jpg"
+    ]
   },
   "49": {
     "billeder": [],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(14).jpg",
+      "Unavngiven præsentation(15).jpg"
+    ]
   },
   "50": {
     "billeder": [],
@@ -327,7 +347,16 @@
   },
   "52": {
     "billeder": [],
-    "plantegninger": []
+    "plantegninger": [
+      "Unavngiven præsentation(16).jpg",
+      "Unavngiven præsentation(17).jpg",
+      "Unavngiven præsentation(18).jpg",
+      "Unavngiven præsentation(19).jpg",
+      "Unavngiven præsentation(20).jpg",
+      "Unavngiven præsentation(21).jpg",
+      "Unavngiven præsentation(22).jpg",
+      "Unavngiven præsentation(23).jpg"
+    ]
   },
   "53": {
     "billeder": [],
@@ -400,6 +429,10 @@
     "plantegninger": []
   },
   "69": {
+    "billeder": [],
+    "plantegninger": []
+  },
+  "70": {
     "billeder": [],
     "plantegninger": []
   }

@@ -45,7 +45,7 @@ def list_images(folder_path):
     return sorted(images)
 
 # Scan alle mapper
-for mappe_nr in range(2, 70):  # Fra Mappe 2 til Mappe 69
+for mappe_nr in range(2, 71):  # Fra Mappe 2 til Mappe 70 (inklusive)
     mappe_name = f"Mappe {mappe_nr}"
     
     billeder_path = os.path.join(billeder_base, mappe_name)
