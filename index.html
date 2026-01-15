@@ -439,6 +439,8 @@
         // Galleri state
         var currentGalleryIndex = {};
         var currentZoomLevel = {};
+        // Vis plantegninger i popups? Standard: false (skjult indtil klar)
+        var SHOW_PLANTEGNINGER = false;
         
         // Funktion til at åbne billede i fuldskærm
         window.openFullscreen = function(mappeNr) {
@@ -676,7 +678,8 @@
                 });
             }
             
-            if (mappeData.plantegninger && mappeData.plantegninger.length > 0) {
+            // Tilføj plantegninger kun hvis det er slået til (standard: false)
+            if (SHOW_PLANTEGNINGER && mappeData.plantegninger && mappeData.plantegninger.length > 0) {
                 mappeData.plantegninger.forEach(function(img) {
                     allImages.push({
                         path: plantegningPath + encodeURIComponent(img),
